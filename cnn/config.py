@@ -1,4 +1,4 @@
-CHANNEL_SEQUENCE_DICT = {"default": [3, 6, 16]}
+CHANNEL_SEQUENCE_DICT = {"default": [1, 6, 16]}
 
 KENREL_SIZES_DICT = {"default": [5, 5]}
 

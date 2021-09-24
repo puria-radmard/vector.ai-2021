@@ -4,7 +4,7 @@ from google.api_core import retry
 from google.cloud import pubsub_v1
 import kafka
 from typing import *
-from .google_utils import * 
+from .google_utils import *
 from concurrent import futures
 from kafka import KafkaProducer, KafkaConsumer
 from kafka.admin import KafkaAdminClient, NewTopic
@@ -41,16 +41,16 @@ class Config:
         assert (
             provider in allowable_providers
         ), f"Provider must be one of {''.join(a for a in allowable_providers)}"
-        
+
         if self.provider == "kafka":
             assert server != None, "Kafka config requires server"
             self.client = KafkaAdminClient(
-                bootstrap_servers=self.server, 
-                client_id='test'
+                bootstrap_servers=self.server, client_id="test"
             )
         elif self.provider == "google_pubsub":
-            (project_id != None and credentials_path != None), \
-                "Kafka config requires project_id and credentials path"
+            (
+                project_id != None and credentials_path != None
+            ), "Kafka config requires project_id and credentials path"
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
 
@@ -71,12 +71,18 @@ class StoppableThread(threading.Thread):
 
 def create_topic(config: Config, topic_name: str, create: bool) -> None:
     if config.provider == "kafka":
-        config.topics[topic_name] = NewTopic(name=topic_name, num_partitions=1, replication_factor=1)
-        create and config.client.create_topics([config.topics[topic_name]], validate_only=False)
+        config.topics[topic_name] = NewTopic(
+            name=topic_name, num_partitions=1, replication_factor=1
+        )
+        create and config.client.create_topics(
+            [config.topics[topic_name]], validate_only=False
+        )
 
     elif config.provider == "google_pubsub":
-        config.topics[topic_name] = config.producer.engine.topic_path(config.project_id, topic_name)
-        create and config.producer.engine.create_topic(name = config.topics[topic_name])
+        config.topics[topic_name] = config.producer.engine.topic_path(
+            config.project_id, topic_name
+        )
+        create and config.producer.engine.create_topic(name=config.topics[topic_name])
 
 
 def generate_producer(config: Config) -> producer_types:
@@ -103,7 +109,7 @@ def send_message(message: str, config: Config, topic: str) -> None:
     print(f"Sent message to {topic}")
 
 
-def generate_consumer(config: Config, topic_name: str, _time: float = float('inf')):
+def generate_consumer(config: Config, topic_name: str, _time: float = float("inf")):
     if config.provider == "kafka":
         if _time:
             return KafkaConsumer(
@@ -119,8 +125,12 @@ def generate_consumer(config: Config, topic_name: str, _time: float = float('inf
 
     elif config.provider == "google_pubsub":
         subscriber = pubsub_v1.SubscriberClient()
-        subscription_id = f"{topic_name}-subscription-{datetime.now().strftime('%S-%M-%H')}"
-        subscription_path = subscriber.subscription_path(config.project_id, subscription_id)
+        subscription_id = (
+            f"{topic_name}-subscription-{datetime.now().strftime('%S-%M-%H')}"
+        )
+        subscription_path = subscriber.subscription_path(
+            config.project_id, subscription_id
+        )
         topic_path = generate_producer(config).topic_path(config.project_id, topic_name)
         with subscriber:
             subscription = subscriber.create_subscription(
@@ -149,7 +159,7 @@ def get_next_message(config: Config, consumer, timeout: float = 2678400):
             subscriber.acknowledge(
                 request={
                     "subscription": consumer,
-                    "ack_ids": [msg.ack_id for msg in response.received_messages]
+                    "ack_ids": [msg.ack_id for msg in response.received_messages],
                 }
             )
             return [msg for msg in response.received_messages][0]
@@ -165,7 +175,9 @@ def collect_messages(config: Config, consumer: consumer_types, bank_list: List) 
     elif config.provider == "google_pubsub":
         subscriber = SubscriberClient()
         appending_callback_func = appending_callback(bank_list)
-        streaming_pull_future = subscriber.subscribe(consumer, callback=appending_callback_func)
+        streaming_pull_future = subscriber.subscribe(
+            consumer, callback=appending_callback_func
+        )
         with subscriber:
             try:
                 streaming_pull_future.result(timeout=2678400)
@@ -176,42 +188,57 @@ def collect_messages(config: Config, consumer: consumer_types, bank_list: List) 
 
 class TopicDictionary(dict):
     """Just a dictionary, but prints relevant warnings for topics"""
+
     def __setitem__(self, key, item):
         if self.has_key(key):
             print(f"Already a topic named {key}!")
         else:
             self.__dict__[key] = item
+
     def __getitem__(self, key):
         if self.has_key(key):
             return self.__dict__[key]
         else:
             print(f"No topic named {key}!")
+
     def __repr__(self):
         return repr(self.__dict__)
+
     def __len__(self):
         return len(self.__dict__)
+
     def __delitem__(self, key):
         del self.__dict__[key]
+
     def clear(self):
         return self.__dict__.clear()
+
     def copy(self):
         return self.__dict__.copy()
+
     def has_key(self, k):
         return k in self.__dict__
+
     def update(self, *args, **kwargs):
         return self.__dict__.update(*args, **kwargs)
+
     def keys(self):
         return self.__dict__.keys()
+
     def values(self):
         return self.__dict__.values()
+
     def items(self):
         return self.__dict__.items()
+
     def pop(self, *args):
         return self.__dict__.pop(*args)
+
     def __cmp__(self, dict_):
         return self.__cmp__(self.__dict__, dict_)
+
     def __contains__(self, item):
         return item in self.__dict__
+
     def __iter__(self):
         return iter(self.__dict__)
-

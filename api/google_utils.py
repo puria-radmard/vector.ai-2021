@@ -20,10 +20,13 @@ def get_callback(
 
 
 def appending_callback(message_bank):
-    def _appending_callback_return(message: pubsub_v1.subscriber.message.Message) -> None:
+    def _appending_callback_return(
+        message: pubsub_v1.subscriber.message.Message,
+    ) -> None:
         message_bank.append(message)
         message.ack()
         if threading.current_thread().stopped():
             threading.current_thread().join()
             raise Exception("Exiting pubsub thread - you shouldn't see this!")
+
     return _appending_callback_return

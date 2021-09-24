@@ -1,7 +1,37 @@
-from utils import train_epoch, val_epoch
+from tqdm import tqdm
+from cnn.utils import *
+import time
 
 
-def train(model, criterion, optimizer, dataloader, num_epochs, reloader=None):
+def epoch_process(model, criterion, optimizer, dataloader, mode):
+
+    assert mode in ["train", "eval"]
+
+    epoch_loss = 0
+    total_correct = 0
+    counter = 0
+
+    for i, data in tqdm(enumerate(dataloader)):
+        if mode == "train":
+            optimizer.zero_grad()
+
+        inputs, labels = data["X"], data["y"]
+        batch_size = inputs.shape[0]
+
+        output = model(inputs)
+        loss = criterion(output, labels)
+        if mode == "train":
+            loss.backward()
+            optimizer.step()
+
+        epoch_loss += loss.item()
+        total_correct += top_1_accuracy(output, labels)
+        counter += batch_size
+
+    return epoch_loss, total_correct, counter
+
+
+def train(model, criterion, optimizer, train_dataloader, eval_dataloader, num_epochs, reloader=None):
 
     train_losses, eval_losses, train_accuracy, eval_accuracy = [], [], [], []
 
@@ -9,17 +39,19 @@ def train(model, criterion, optimizer, dataloader, num_epochs, reloader=None):
 
         model.train()
         train_epoch_loss, train_total_correct, train_counter = epoch_process(
-            model, criterion, optimizer, dataloader, "train"
+            model, criterion, optimizer, train_dataloader, "train"
         )
         print(
             f"Epoch {epoch}: train loss {train_epoch_loss/train_counter}, train accuracy {train_total_correct/train_counter}"
-        )
+        )    
         train_losses.append(train_epoch_loss / train_counter)
         train_accuracy.append(train_total_correct / train_counter)
 
+        time.sleep(2)
+
         model.eval()
         eval_epoch_loss, eval_total_correct, eval_counter = epoch_process(
-            model, criterion, dataloader, "eval"
+            model, criterion, None, eval_dataloader, "eval"
         )
         print(
             f"Epoch {epoch}: test loss {eval_epoch_loss/eval_counter}, test accuracy {eval_total_correct/eval_counter}"

@@ -1,10 +1,11 @@
-from .utils import * 
+from .utils import *
 from google.api_core.exceptions import AlreadyExists
 from kafka.errors import TopicAlreadyExistsError
 from threading import Thread
 from google.pubsub_v1 import SubscriberClient
 
 __all__ = ["Producer", "Consumer", "Config"]
+
 
 class APIItem:
     def __init__(self, config: Config):
@@ -27,7 +28,7 @@ class APIItem:
 
 class Producer(APIItem):
     def __init__(self, config: Config):
-        super(Producer, self).__init__(config)    
+        super(Producer, self).__init__(config)
         self.engine = generate_producer(self.config)
 
     def send_message(self, message, topic_name):
@@ -36,9 +37,9 @@ class Producer(APIItem):
 
 class Consumer(APIItem):
     def __init__(self, config: Config):
-        super(Consumer, self).__init__(config) 
+        super(Consumer, self).__init__(config)
         self.message_bank = TopicDictionary()
-        self.maintained_threads = {} # TopicDictionary()
+        self.maintained_threads = {}  # TopicDictionary()
         self.subscriber = SubscriberClient()
 
     def start_listening(self, topic_name):
@@ -65,6 +66,6 @@ class Consumer(APIItem):
             self_name = f"{self=}".split("=")[0]
             print(f"Stopped collecting in {self_name}.message_bank[{topic_name}]")
 
-    def get_next_message(self, topic_name, max_time = None):
+    def get_next_message(self, topic_name, max_time=None):
         engine = generate_consumer(self.config, topic_name, max_time)
         return get_next_message(self.config, engine)

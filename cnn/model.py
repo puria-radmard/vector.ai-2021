@@ -1,13 +1,11 @@
 from torch import nn
 from torch.nn import functional as F
 
-from utils import (
-    generate_convolutional_layers,
-    generate_fc_layers,
-    ReluLayer,
-    FlattenLayer,
-)
-from config import *
+from cnn.utils import *
+from cnn.config import *
+
+
+__all__ = ["ConvNN", "generate_model_by_name"]
 
 
 class ConvNN(nn.Module):
@@ -20,16 +18,17 @@ class ConvNN(nn.Module):
         hidden_fc_sequence,
     ):
 
-        super(self, ConvNN).__init__()
+        super(ConvNN, self).__init__()
 
         assert len(channel_sequence) - 1 == len(
-            channel_sequence
+            kernel_sizes
         ), "Require kernel_sizes length 1 less than channel_sequence length"
         # ADD CONV TO FC CHECK HERE
         assert (
-            len(input_size) == 3 and input_size[-1] == channel_sequence[0]
-        ), "Input size must be 3 dimensional, and final dimension must be the same as channel_sequence[0]"
+            len(input_size) == 3 and input_size[0] == channel_sequence[0]
+        ), f"Input size must be 3 dimensional, and first dimension ({input_size[0]}) must be the same as channel_sequence[0] ({channel_sequence[0]})"
 
+        self.input_size = input_size
         self.channel_sequence = channel_sequence
         self.kernel_sizes = kernel_sizes
         self.hidden_fc_sequence = hidden_fc_sequence
@@ -39,6 +38,7 @@ class ConvNN(nn.Module):
             channel_sequence, kernel_sizes
         )
         self.flatten = FlattenLayer()
+        self.conv_output_size = compute_output_size(self.input_size, self.convolutional_layers, self.flatten)
         self.fc_layers = generate_fc_layers(
             self.conv_output_size, hidden_fc_sequence, num_classes
         )
@@ -54,7 +54,7 @@ def generate_model_by_name(num_classes, input_size, name="default"):
     cs = CHANNEL_SEQUENCE_DICT[name]
     ks = KENREL_SIZES_DICT[name]
     fc = FC_SEQUENCE_DICT[name]
-    model = CNN(
+    model = ConvNN(
         num_classes=num_classes,
         input_size=input_size,
         channel_sequence=cs,
