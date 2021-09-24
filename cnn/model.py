@@ -10,7 +10,7 @@ from utils import (
 from config import *
 
 
-def ConvNN(nn.Module):
+class ConvNN(nn.Module):
     def __init__(
         self,
         input_size,
