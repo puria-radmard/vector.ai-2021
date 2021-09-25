@@ -38,7 +38,9 @@ class ConvNN(nn.Module):
             channel_sequence, kernel_sizes
         )
         self.flatten = FlattenLayer()
-        self.conv_output_size = compute_output_size(self.input_size, self.convolutional_layers, self.flatten)
+        self.conv_output_size = compute_output_size(
+            self.input_size, self.convolutional_layers, self.flatten
+        )
         self.fc_layers = generate_fc_layers(
             self.conv_output_size, hidden_fc_sequence, num_classes
         )
@@ -50,7 +52,7 @@ class ConvNN(nn.Module):
         return x
 
 
-def generate_model_by_name(num_classes, input_size, name="default"):
+def generate_model_by_name(num_classes, input_size, name="default") -> nn.Module:
     cs = CHANNEL_SEQUENCE_DICT[name]
     ks = KENREL_SIZES_DICT[name]
     fc = FC_SEQUENCE_DICT[name]

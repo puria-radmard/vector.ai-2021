@@ -39,32 +39,59 @@ class Consumer(APIItem):
     def __init__(self, config: Config):
         super(Consumer, self).__init__(config)
         self.message_bank = TopicDictionary()
-        self.maintained_threads = {}  # TopicDictionary()
-        self.subscriber = SubscriberClient()
+        self.maintained_threads = TopicDictionary()
+        if config.provider in ["google_pubsub"]:
+            self.subscriber = SubscriberClient()
 
-    def start_listening(self, topic_name):
+    def create_topic(self, topic_name):
+        super(Consumer, self).create_topic(topic_name)
+        if topic_name not in self.maintained_threads:
+            self.maintained_threads[topic_name] = {}
+
+    def add_topic(self, topic_name):
+        super().add_topic(topic_name)
+        if topic_name not in self.maintained_threads:
+            self.maintained_threads[topic_name] = {}
+
+    def start_stream(self, topic_name, callback_function, stream_name):
+        assert stream_name != "listening", "Stream name cannot be listening"
+        assert (
+            stream_name not in self.maintained_threads[topic_name]
+        ), f"Stream {stream_name} already maintained by {topic_name}"
         engine = generate_consumer(self.config, topic_name)
-        self.message_bank[topic_name] = []
-        self.maintained_threads[topic_name] = StoppableThread(
-            target=collect_messages,
-            args=(self.config, engine, self.message_bank[topic_name]),
+        self.maintained_threads[topic_name][stream_name] = StoppableThread(
+            target=direct_messages,
+            args=(self.config, engine, callback_function),
         )
-        self.maintained_threads[topic_name].start()
-        print(f"Started collecting in self.message_bank[{topic_name}]")
+        self.maintained_threads[topic_name][stream_name].start()
+        print(f"Started streaming messages from {topic_name} to {callback_function}")
 
-    def stop_listening(self, topic_name):
-        """
-        Stops collecting messages in self.message_bank[topic_name] AFTER next message received
-        """
-        thread = self.maintained_threads[topic_name]
+    def kill_stream(self, topic_name, stream_name):
+        """Stops collecting messages in self.message_bank[topic_name]
+        AFTER next message received"""
+        thread = self.maintained_threads[topic_name][stream_name]
         if not thread:
             print(f"No message bank with name {topic_name}")
         elif thread.stopped():
             print(f"Already stopped collecting in {topic_name}")
         else:
-            self.maintained_threads[topic_name].stop()
+            thread.stop()
+            del self.maintained_threads[topic_name][stream_name]
             self_name = f"{self=}".split("=")[0]
             print(f"Stopped collecting in {self_name}.message_bank[{topic_name}]")
+
+    def start_listening(self, topic_name):
+        engine = generate_consumer(self.config, topic_name)
+        self.message_bank[topic_name] = []
+        self.maintained_threads[topic_name]["listening"] = StoppableThread(
+            target=collect_messages,
+            args=(self.config, engine, self.message_bank[topic_name]),
+        )
+        self.maintained_threads[topic_name]["listening"].start()
+        print(f"Started collecting in self.message_bank[{topic_name}]")
+
+    def stop_listening(self, topic_name):
+        self.kill_stream(topic_name, stream_name="listening")
 
     def get_next_message(self, topic_name, max_time=None):
         engine = generate_consumer(self.config, topic_name, max_time)

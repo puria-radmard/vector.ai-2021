@@ -1,5 +1,5 @@
 from datetime import datetime
-import json
+import json, time
 from google.api_core import retry
 from google.cloud import pubsub_v1
 import kafka
@@ -22,6 +22,7 @@ __all__ = [
     "generate_consumer",
     "get_next_message",
     "collect_messages",
+    "direct_messages",
     "create_topic",
 ]
 
@@ -97,9 +98,9 @@ def send_message(message: str, config: Config, topic: str) -> None:
     if topic not in config.topics:
         print(f"No such topic {topic}")
         return
-    elif config.provider == "kafka":
+    if config.provider == "kafka":
         config.producer.engine.send(topic, json.dumps(message).encode("utf-8"))
-
+        time.sleep(2)
     elif config.provider == "google_pubsub":
         publish_future = config.producer.engine.publish(
             config.topics[topic], message.encode("utf-8")
@@ -139,7 +140,9 @@ def generate_consumer(config: Config, topic_name: str, _time: float = float("inf
         return subscription_path
 
 
-def get_next_message(config: Config, consumer, timeout: float = 2678400):
+def get_next_message(
+    config: Config, consumer: consumer_types, timeout: float = 2678400
+):
     if config.provider == "kafka":
         try:
             for m in consumer:
@@ -165,25 +168,32 @@ def get_next_message(config: Config, consumer, timeout: float = 2678400):
             return [msg for msg in response.received_messages][0]
 
 
-def collect_messages(config: Config, consumer: consumer_types, bank_list: List) -> None:
+def direct_messages(
+    config: Config, consumer: consumer_types, callback: Callable
+) -> None:
     if config.provider == "kafka":
         for m in consumer:
-            bank_list.append(m)
+            callback(m)
             if threading.current_thread().stopped():
                 break
 
     elif config.provider == "google_pubsub":
         subscriber = SubscriberClient()
-        appending_callback_func = appending_callback(bank_list)
-        streaming_pull_future = subscriber.subscribe(
-            consumer, callback=appending_callback_func
-        )
+        streaming_pull_future = subscriber.subscribe(consumer, callback=callback)
         with subscriber:
             try:
                 streaming_pull_future.result(timeout=2678400)
             except TimeoutError:
                 streaming_pull_future.cancel()  # Trigger the shutdown.
                 streaming_pull_future.result()  # Block until the shutdown is complete.
+
+
+def collect_messages(config: Config, consumer: consumer_types, bank_list: List) -> None:
+    if config.provider == "kafka":
+        callback = lambda x: bank_list.append(x)
+    elif config.provider == "google_pubsub":
+        callback = appending_callback(bank_list)
+    direct_messages(config, consumer, callback)
 
 
 class TopicDictionary(dict):

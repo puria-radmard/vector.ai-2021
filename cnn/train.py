@@ -31,7 +31,15 @@ def epoch_process(model, criterion, optimizer, dataloader, mode):
     return epoch_loss, total_correct, counter
 
 
-def train(model, criterion, optimizer, train_dataloader, eval_dataloader, num_epochs, reloader=None):
+def train(
+    model,
+    criterion,
+    optimizer,
+    train_dataloader,
+    eval_dataloader,
+    num_epochs,
+    reloader=None,
+):
 
     train_losses, eval_losses, train_accuracy, eval_accuracy = [], [], [], []
 
@@ -43,7 +51,7 @@ def train(model, criterion, optimizer, train_dataloader, eval_dataloader, num_ep
         )
         print(
             f"Epoch {epoch}: train loss {train_epoch_loss/train_counter}, train accuracy {train_total_correct/train_counter}"
-        )    
+        )
         train_losses.append(train_epoch_loss / train_counter)
         train_accuracy.append(train_total_correct / train_counter)
 

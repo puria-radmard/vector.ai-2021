@@ -10,7 +10,7 @@ __all__ = [
     "top_1_accuracy",
     "compute_output_size",
     "SimpleImageDataset",
-    "coll_fn"
+    "coll_fn",
 ]
 
 
@@ -39,9 +39,10 @@ def generate_convolutional_layers(channel_sequence, kernel_sizes):
                     channel_sequence[i], channel_sequence[i + 1], kernel_sizes[i]
                 ),
                 ReluLayer(),
-                nn.MaxPool2d(2, 2)
+                nn.MaxPool2d(2, 2),
             ]
-        )   for i in range(len(channel_sequence) - 1)
+        )
+        for i in range(len(channel_sequence) - 1)
     ]
     convolutional_layers = nn.Sequential(*convolutional_layers)
     return convolutional_layers
@@ -52,7 +53,8 @@ def generate_fc_layers(conv_output_size, hidden_fc_sequence, num_classes):
     [
         fc_layers.extend(
             [nn.Linear(hidden_fc_sequence[i], hidden_fc_sequence[i + 1]), ReluLayer()]
-        ) for i in range(len(hidden_fc_sequence) - 1)
+        )
+        for i in range(len(hidden_fc_sequence) - 1)
     ]
     fc_layers.append(nn.Linear(hidden_fc_sequence[-1], num_classes))
     fc_layers = nn.Sequential(*fc_layers)
@@ -63,7 +65,9 @@ def compute_output_size(input_size, *modules):
     example_input = torch.randn(1, *input_size)
     example_output = nn.Sequential(*modules)(example_input)
     example_output_shape = example_output.shape
-    assert len(example_output_shape) == 2 and example_output_shape[0] == 1, f"Error in convolutional + flatten layers: output of flatten should be of shape [1, _], but is of shape {example_output_shape}"
+    assert (
+        len(example_output_shape) == 2 and example_output_shape[0] == 1
+    ), f"Error in convolutional + flatten layers: output of flatten should be of shape [1, _], but is of shape {example_output_shape}"
     return example_output_shape[-1]
 
 
@@ -71,7 +75,6 @@ def top_1_accuracy(model_outputs, labels):
     _, preds = torch.max(model_outputs, 1)
     correct = sum(preds == labels).item()
     return correct
-
 
 
 class SimpleImageDataset(torch.utils.data.Dataset):
@@ -91,5 +94,5 @@ class SimpleImageDataset(torch.utils.data.Dataset):
 def coll_fn(instances):
     return {
         "X": torch.stack([ins["X"] for ins in instances]),
-        "y": torch.stack([ins["y"] for ins in instances])
+        "y": torch.stack([ins["y"] for ins in instances]),
     }
