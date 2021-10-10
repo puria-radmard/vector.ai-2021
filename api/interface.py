@@ -10,14 +10,10 @@ __all__ = ["Producer", "Consumer", "Config"]
 class APIItem:
     def __init__(self, config: Config):
         self.config = config
-        if self.__class__ == Producer:
-            config.producer = self
-        elif self.__class__ == Consumer:
-            config.consumer = self
 
     def create_topic(self, topic_name):
         try:
-            create_topic(self.config, topic_name, True)
+            create_topic(self.config, self, topic_name, True)
         except (TopicAlreadyExistsError, AlreadyExists) as e:
             print(f"Caught: {e}")
             print("Topic added anyway")
@@ -32,7 +28,7 @@ class Producer(APIItem):
         self.engine = generate_producer(self.config)
 
     def send_message(self, message, topic_name):
-        send_message(message, self.config, topic_name)
+        send_message(message, self.config, self, topic_name)
 
 
 class Consumer(APIItem):

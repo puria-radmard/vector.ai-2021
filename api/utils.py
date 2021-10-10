@@ -70,7 +70,7 @@ class StoppableThread(threading.Thread):
         return self._stop_event.is_set()
 
 
-def create_topic(config: Config, topic_name: str, create: bool) -> None:
+def create_topic(config: Config, producer, topic_name: str, create: bool) -> None:
     if config.provider == "kafka":
         config.topics[topic_name] = NewTopic(
             name=topic_name, num_partitions=1, replication_factor=1
@@ -80,10 +80,10 @@ def create_topic(config: Config, topic_name: str, create: bool) -> None:
         )
 
     elif config.provider == "google_pubsub":
-        config.topics[topic_name] = config.producer.engine.topic_path(
+        config.topics[topic_name] = producer.engine.topic_path(
             config.project_id, topic_name
         )
-        create and config.producer.engine.create_topic(name=config.topics[topic_name])
+        create and producer.engine.create_topic(name=config.topics[topic_name])
 
 
 def generate_producer(config: Config) -> producer_types:
@@ -94,15 +94,15 @@ def generate_producer(config: Config) -> producer_types:
         return PublisherClient()
 
 
-def send_message(message: str, config: Config, topic: str) -> None:
+def send_message(message: str, config: Config, producer, topic: str) -> None:
     if topic not in config.topics:
         print(f"No such topic {topic}")
         return
     if config.provider == "kafka":
-        config.producer.engine.send(topic, json.dumps(message).encode("utf-8"))
+        producer.engine.send(topic, json.dumps(message).encode("utf-8"))
         time.sleep(2)
     elif config.provider == "google_pubsub":
-        publish_future = config.producer.engine.publish(
+        publish_future = producer.engine.publish(
             config.topics[topic], message.encode("utf-8")
         )
         publish_future.add_done_callback(get_callback(publish_future, message))
@@ -197,6 +197,22 @@ def collect_messages(config: Config, consumer: consumer_types, bank_list: List) 
 
 
 class TopicDictionary(dict):
+    """Just a dictionary, but prints relevant warnings for topics"""
+
+    def __setitem__(self, key, item):
+        if key in self:
+            print(f"Already a topic named {key}!")
+        else:
+            super().__setitem__(key, item)
+
+    def __getitem__(self, key, item):
+        if key in self:
+            return super().__getitem__(key, item)
+        else:
+            print(f"No topic named {key}!")
+
+
+class OLDTopicDictionary(dict):
     """Just a dictionary, but prints relevant warnings for topics"""
 
     def __setitem__(self, key, item):
